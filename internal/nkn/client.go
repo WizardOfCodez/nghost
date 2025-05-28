@@ -242,18 +242,20 @@ func (c *Client) AnnouncePeer(ipAddress string, isExitNode bool) error {
 		return err
 	}
 
-	// Broadcast to discovery address for peer discovery
-	discoveryAddr := "nghost.discovery"
-	_, err = c.multiClient.Send(nkn.NewStringArray(discoveryAddr), data, nil)
-	
-	// Also send to known peers for redundancy
+	// Only send to known peers - skip broadcast for now
 	c.peersMutex.RLock()
 	defer c.peersMutex.RUnlock()
+	
+	if len(c.peers) == 0 {
+		fmt.Printf("⚠️  No peers to announce to (use manual connection)\n")
+		return nil
+	}
+	
 	for _, peer := range c.peers {
 		c.multiClient.Send(nkn.NewStringArray(peer.Address), data, nil)
 	}
 	
-	return err
+	return nil
 }
 
 func (c *Client) FindExitNodes() []*Peer {
