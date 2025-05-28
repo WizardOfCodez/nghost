@@ -24,6 +24,7 @@ func main() {
 		exportPeers = flag.String("export-peers", "", "Export peers to JSON file")
 		status      = flag.Bool("status", false, "Show network interface status")
 		testDiscovery = flag.Bool("test-discovery", false, "Test exit node discovery")
+		connectPeer = flag.String("connect", "", "Connect to peer and start VPN")
 	)
 	flag.Parse()
 
@@ -75,6 +76,12 @@ func main() {
 	vpnEngine, err := vpn.NewEngine(cfg.VPN, nknClient)
 	if err != nil {
 		log.Fatalf("Failed to create VPN engine: %v", err)
+	}
+
+	// Add peer connection if specified
+	if *connectPeer != "" {
+		fmt.Printf("🔗 Connecting to peer: %s\n", (*connectPeer)[:16]+"...")
+		nknClient.AddPeer(*connectPeer)
 	}
 
 	if *exitNode {
