@@ -1,0 +1,24 @@
+{
+  "nkn": {
+    "seedRPCServerAddr": [
+      "http://seed1.nkn.org:30003",
+      "http://seed2.nkn.org:30003",
+      "http://seed3.nkn.org:30003"
+    ],
+    "clientConfig": {
+      "seedRPCServerAddr": null,
+      "rpcTimeout": 0,
+      "rpcConcurrency": 0
+    }
+  },
+  "vpn": {
+    "interfaceName": "nghost0",
+    "cidr": "10.100.0.0/16",
+    "mtu": 1420,
+    "dns": [
+      "1.1.1.1",
+      "8.8.8.8"
+    ],
+    "exitNodes": []
+  }
+}
