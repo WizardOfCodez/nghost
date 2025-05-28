@@ -47,10 +47,17 @@ func (e *Engine) StartDaemon() error {
 	}
 	e.tunDevice = tunDevice
 
-	// Set our IP address
+	// Set our IP address based on role
 	_, network, _ := net.ParseCIDR(e.config.CIDR)
-	e.myIP = network.IP
-	e.myIP[len(e.myIP)-1] = 1 // Use .1 as our IP
+	e.myIP = make(net.IP, len(network.IP))
+	copy(e.myIP, network.IP)
+	
+	if e.isExitNode {
+		e.myIP[len(e.myIP)-1] = 1 // Exit nodes use .1
+	} else {
+		// Clients get dynamic IP based on their NKN address
+		e.myIP[len(e.myIP)-1] = e.calculateClientIP()
+	}
 
 	// Link NKN client with VPN engine
 	e.nknClient.SetVPNEngine(e)
@@ -238,6 +245,17 @@ func (e *Engine) AddPeerRoute(peerIP, nknAddr string) error {
 
 func (e *Engine) RemovePeerRoute(peerIP string) error {
 	return e.removePeerRoute(peerIP)
+}
+
+// calculateClientIP generates a unique IP for clients based on their NKN address
+func (e *Engine) calculateClientIP() byte {
+	// Use hash of NKN address to generate unique IP suffix
+	nknAddr := e.nknClient.GetAddress()
+	hash := 0
+	for _, b := range []byte(nknAddr) {
+		hash = (hash*31 + int(b)) % 253 // Keep in range 2-254
+	}
+	return byte(hash + 2) // Start from .2 (skip .1 for exit node)
 }
 
 func (e *Engine) Stop() error {
