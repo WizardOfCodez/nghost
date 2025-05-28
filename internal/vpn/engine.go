@@ -167,6 +167,20 @@ func (e *Engine) InjectPacket(packet []byte) error {
 }
 
 func (e *Engine) announcePeer() {
+	// Wait for interface to be fully configured
+	time.Sleep(2 * time.Second)
+	
+	// Initial announcement
+	if err := e.nknClient.AnnouncePeer(e.myIP.String(), e.isExitNode); err != nil {
+		fmt.Printf("❌ Failed initial peer announcement: %v\n", err)
+	} else {
+		if e.isExitNode {
+			fmt.Printf("📢 Announced as exit node with IP %s\n", e.myIP.String())
+		} else {
+			fmt.Printf("📢 Announced peer with IP %s\n", e.myIP.String())
+		}
+	}
+
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
@@ -174,7 +188,9 @@ func (e *Engine) announcePeer() {
 		select {
 		case <-ticker.C:
 			if err := e.nknClient.AnnouncePeer(e.myIP.String(), e.isExitNode); err != nil {
-				fmt.Printf("Failed to announce peer: %v\n", err)
+				fmt.Printf("❌ Failed to announce peer: %v\n", err)
+			} else {
+				fmt.Printf("📢 Peer announcement sent (exit_node=%v)\n", e.isExitNode)
 			}
 		}
 	}
@@ -185,18 +201,34 @@ func (e *Engine) enableIPForwarding() error {
 }
 
 func (e *Engine) setupNAT() error {
+	// Get the actual interface name
+	interfaceName := e.config.InterfaceName
+	if e.tunDevice != nil {
+		interfaceName = e.tunDevice.GetName()
+	}
+
 	// Set up iptables rules for NAT
 	commands := [][]string{
 		{"iptables", "-t", "nat", "-A", "POSTROUTING", "-s", e.config.CIDR, "-j", "MASQUERADE"},
-		{"iptables", "-A", "FORWARD", "-i", e.config.InterfaceName, "-j", "ACCEPT"},
-		{"iptables", "-A", "FORWARD", "-o", e.config.InterfaceName, "-j", "ACCEPT"},
+		{"iptables", "-A", "FORWARD", "-i", interfaceName, "-j", "ACCEPT"},
+		{"iptables", "-A", "FORWARD", "-o", interfaceName, "-j", "ACCEPT"},
 	}
 
+	fmt.Printf("🔧 Setting up NAT for exit node...\n")
 	for _, cmd := range commands {
-		if err := exec.Command(cmd[0], cmd[1:]...).Run(); err != nil {
-			fmt.Printf("Warning: failed to run iptables command %v: %v\n", cmd, err)
+		fmt.Printf("🔧 Running: %v\n", cmd)
+		execCmd := exec.Command(cmd[0], cmd[1:]...)
+		output, err := execCmd.CombinedOutput()
+		if err != nil {
+			fmt.Printf("⚠️  iptables command failed: %v\n", err)
+			fmt.Printf("⚠️  Output: %s\n", string(output))
+			// Continue with other rules even if one fails
+		} else {
+			fmt.Printf("✅ iptables rule added\n")
 		}
 	}
+	
+	fmt.Printf("✅ NAT configuration completed\n")
 	return nil
 }
 

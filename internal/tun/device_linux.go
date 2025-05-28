@@ -4,7 +4,6 @@ package tun
 
 import (
 	"fmt"
-	"os/exec"
 )
 
 func (d *Device) createDarwin() error {

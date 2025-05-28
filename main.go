@@ -23,6 +23,7 @@ func main() {
 		addPeer     = flag.String("add-peer", "", "Add peer by NKN address")
 		exportPeers = flag.String("export-peers", "", "Export peers to JSON file")
 		status      = flag.Bool("status", false, "Show network interface status")
+		testDiscovery = flag.Bool("test-discovery", false, "Test exit node discovery")
 	)
 	flag.Parse()
 
@@ -50,6 +51,13 @@ func main() {
 
 	if *status {
 		showNetworkStatus()
+		return
+	}
+
+	if *testDiscovery {
+		if err := testExitNodeDiscovery(*configPath); err != nil {
+			log.Fatalf("Failed to test discovery: %v", err)
+		}
 		return
 	}
 

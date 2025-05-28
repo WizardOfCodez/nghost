@@ -22,8 +22,27 @@ func (e *Engine) setupDefaultRoute() error {
 func (e *Engine) setupDefaultRouteLinux() error {
 	// Add route for VPN traffic through our interface
 	_, network, _ := net.ParseCIDR(e.config.CIDR)
-	cmd := exec.Command("ip", "route", "add", network.String(), "dev", e.config.InterfaceName)
-	return cmd.Run()
+	
+	// Use the actual interface name, not the configured one
+	interfaceName := e.config.InterfaceName
+	if e.tunDevice != nil {
+		interfaceName = e.tunDevice.GetName()
+	}
+	
+	cmd := exec.Command("ip", "route", "add", network.String(), "dev", interfaceName)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		// Check if route already exists
+		if strings.Contains(string(output), "File exists") {
+			fmt.Printf("ℹ️  Route already exists for %s\n", network.String())
+			return nil
+		}
+		fmt.Printf("❌ Route command failed: %s\n", string(output))
+		return err
+	}
+	
+	fmt.Printf("✅ Added route: %s via %s\n", network.String(), interfaceName)
+	return nil
 }
 
 func (e *Engine) setupDefaultRouteDarwin() error {
