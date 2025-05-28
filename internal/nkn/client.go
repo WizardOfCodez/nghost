@@ -155,6 +155,7 @@ func (c *Client) handlePeerAnnouncement(src string, payload interface{}) {
 	if !exists {
 		peer = &Peer{Address: src}
 		c.peers[src] = peer
+		fmt.Printf("🆕 New peer discovered: %s\n", src[:16]+"...")
 	}
 
 	peer.IPAddress = announcement.IPAddress
@@ -162,7 +163,7 @@ func (c *Client) handlePeerAnnouncement(src string, payload interface{}) {
 	peer.Online = true
 	peer.LastSeen = time.Now()
 
-	fmt.Printf("Peer %s announced: IP=%s, ExitNode=%v\n", src, announcement.IPAddress, announcement.ExitNode)
+	fmt.Printf("📢 Peer %s announced: IP=%s, ExitNode=%v\n", src[:16]+"...", announcement.IPAddress, announcement.ExitNode)
 
 	// Notify VPN engine about new peer route
 	if c.vpnEngine != nil && announcement.IPAddress != "" {
@@ -211,6 +212,7 @@ func (c *Client) AddPeer(address string) {
 		Address: address,
 		Online:  false,
 	}
+	fmt.Printf("🔗 Added peer manually: %s\n", address[:16]+"...")
 }
 
 func (c *Client) GetPeers() map[string]*Peer {
@@ -240,14 +242,18 @@ func (c *Client) AnnouncePeer(ipAddress string, isExitNode bool) error {
 		return err
 	}
 
-	// Broadcast to all known peers
+	// Broadcast to discovery address for peer discovery
+	discoveryAddr := "nghost.discovery"
+	_, err = c.multiClient.Send(nkn.NewStringArray(discoveryAddr), data, nil)
+	
+	// Also send to known peers for redundancy
 	c.peersMutex.RLock()
 	defer c.peersMutex.RUnlock()
-
 	for _, peer := range c.peers {
 		c.multiClient.Send(nkn.NewStringArray(peer.Address), data, nil)
 	}
-	return nil
+	
+	return err
 }
 
 func (c *Client) FindExitNodes() []*Peer {
